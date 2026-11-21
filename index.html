@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>华华关心</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: radial-gradient(circle at center, #13294b 0%, #060d1f 75%);
+    color: #fff;
+  }
+
+  /* 弹窗 */
+  .modal {
+    position: fixed; inset: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,.35);
+  }
+  .modal-box {
+    background: rgba(20,36,66,.92); border: 1px solid rgba(255,255,255,.15);
+    border-radius: 20px; padding: 34px 26px; text-align: center;
+    width: 82%; max-width: 340px; backdrop-filter: blur(8px);
+    box-shadow: 0 12px 40px rgba(0,0,0,.4);
+  }
+  .modal-box .icon { font-size: 46px; margin-bottom: 14px; }
+.modal-box h2 { font-size: 18px; margin-bottom: 8px; }
+  .modal-box p { font-size: 13px; color: rgba(255,255,255,.55); margin-bottom: 24px; }
+  .modal-btns { display: flex; gap: 12px; }
+  .modal-btns button {
+    flex: 1; height: 44px; border-radius: 22px; border: none;
+    font-size: 15px; font-weight: 600; cursor: pointer;
+  }
+  .cancel { background: rgba(255,255,255,.12); color: #ccc; }
+  .confirm { background: linear-gradient(135deg, #ff6b9d, #ff4d79); color: #fff; }
+
+  #stage { position: fixed; inset: 0; display: none; }
+  .pen {
+    position: absolute; width: 26px; height: 64px; z-index: 6;
+    background: linear-gradient(180deg, #ff6b9d, #ff4d79);
+    border-radius: 6px 6px 2px 2px; transform-origin: 50% 90%;
+  }
+  .pen::after {
+    content: ''; position: absolute; bottom: -10px; left: 50%;
+    transform: translateX(-50%);
+    border-left: 5px solid transparent; border-right: 5px solid transparent;
+    border-top: 10px solid #ff4d79;
+  }
+  .word {
+    position: absolute; white-space: nowrap; pointer-events: none;
+will-change: transform, opacity; text-shadow: 0 0 8px currentColor;
+  }
+  .music-btn {
+    position: fixed; top: 18px; right: 16px; z-index: 30;
+    padding: 8px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,.25);
+    background: rgba(255,255,255,.1); color: #fff; font-size: 13px;
+  }
+  canvas#snow { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
+</style>
+</head>
+<body>
+
+<div class="modal" id="modal">
+  <div class="modal-box">
+    <div class="icon">❄️</div>
+    <h2>是否收下这份关心？</h2>
+    <p>华华给你准备了一份小惊喜～</p>
+    <div class="modal-btns">
+      <button class="cancel" id="cancelBtn">取消</button>
+      <button class="confirm" id="confirmBtn">确定</button>
+    </div>
+  </div>
+</div>
+
+<div id="stage"><div class="pen" id="pen"></div></div>
+<canvas id="snow"></canvas>
+<button class="music-btn" id="musicBtn">🔊 音乐</button>
+<audio id="bgm" preload="auto" loop></audio>
+
+<script>
+  const winterWords = [
+    "我想你了","我喜欢你","保持微笑呀","每天都要活力满满","保持好心情",
+"我想你了庄欣雨","庄欣雨","我喜欢你","梦想成真","烦恼归零",
+    "少熬夜","少吃零食","愿我们长长久久","愿我们幸福","我喜欢你","早睡早起","我爱你庄欣雨"
+  ];
+  const palette = ["#ff6b9d","#ff4d6d","#ffc371","#ffffff","#a8d8ff","#ff9eb5"];
+
+  /* 卡点时间点（秒）：第 8 秒炸开 */
+  const EXPLODE_AT = 8;
+
+  const modal = document.getElementById("modal");
+  const stage = document.getElementById("stage");
+  const pen = document.getElementById("pen");
+  const bgm = document.getElementById("bgm");
+  const musicBtn = document.getElementById("musicBtn");
+
+  /* 音频源（base64 内嵌，单文件自包含） */
+  bgm.src = "./sudi.mp3";
+
+  let audioOn = false, exploded = false, heartDrawn = false, startTime = 0;
+
+  document.getElementById("cancelBtn").addEventListener("click", () => {
+    modal.innerHTML = `<div class="modal-box"><div class="icon">❄️</div><h2>没关系</h2><p>祝你冬至平安顺遂，温暖常伴</p></div>`;
+  });
+
+  document.getElementById("confirmBtn").addEventListener("click", () => {
+    modal.style.display = "none";
+    stage.style.display = "block";
+    startTime = Date.now();
+    startAudio();
+drawHeart();
+    // 用点击后的真实计时驱动炸开（不依赖音频 currentTime，避免 base64 音频时间戳异常）
+    setInterval(() => {
+      const elapsed = (Date.now() - startTime) / 1000;
+      if (elapsed >= EXPLODE_AT) triggerExplode();
+    }, 200);
+  });
+
+  function triggerExplode() {
+    if (exploded) return;
+    if (!heartDrawn) return; // 爱心画好后才炸
+    if ((Date.now() - startTime) / 1000 < EXPLODE_AT) return; // 到第 8 秒才炸
+    exploded = true;
+    explode();
+  }
+
+  /* ---------- 音频 ---------- */
+  function startAudio() {
+    bgm.volume = 0.8;
+    bgm.play().then(() => {
+      audioOn = true; musicBtn.innerText = "🔇 静音";
+    }).catch(() => {
+      audioOn = false; musicBtn.innerText = "🎵 音乐";
+    });
+  }
+  musicBtn.addEventListener("click", () => {
+    if (audioOn) {
+      bgm.pause(); audioOn = false; musicBtn.innerText = "🔊 音乐";
+    } else {
+      bgm.play().then(() => { audioOn = true; musicBtn.innerText = "🔇 静音"; }).catch(()=>{});
+    }
+  });
+
+  /* ---------- 爱心路径 ---------- */
+  function heartPath(step) {
+    const pts = [];
+for (let t = 0; t < Math.PI * 2; t += step) {
+      const x = 16 * Math.pow(Math.sin(t), 3);
+      const y = -(13*Math.cos(t) - 5*Math.cos(2*t) - 2*Math.cos(3*t) - Math.cos(4*t));
+      pts.push({ x, y });
+    }
+    return pts;
+  }
+  function heartFill(count) {
+    const outline = heartPath(0.025);
+    const pts = [];
+    for (let i = 0; i < count; i++) {
+      const e = outline[Math.floor(Math.random() * outline.length)];
+      const s = Math.random() * 0.8;
+      pts.push({ x: e.x * s, y: e.y * s });
+    }
+    return pts;
+  }
+
+  const floaters = [];
+  let W = innerWidth, H = innerHeight;
+  const cx = () => W / 2, cy = () => H / 2, XS = 1.3;
+  const Y_CENTER = 2.54, Y_HEIGHT = 28.92, X_WIDTH = 32;
+  function fitScale() {
+    const pad = 28;
+    const sx = (W - pad * 2) / (X_WIDTH * 10 * XS);
+    const sy = (H - pad * 2) / (Y_HEIGHT * 10);
+    return Math.min(sx, sy, 1.7);
+  }
+
+  function makeWord(text, x, y, size) {
+    const el = document.createElement("div");
+    el.className = "word";
+el.innerText = text;
+    el.style.left = x + "px";
+    el.style.top = y + "px";
+    el.style.fontSize = size + "px";
+    el.style.color = palette[Math.floor(Math.random() * palette.length)];
+    el.style.opacity = "0";
+    stage.appendChild(el);
+    setTimeout(() => { el.style.transition = "opacity .5s"; el.style.opacity = ".92"; }, 80);
+    return el;
+  }
+
+  /* 阶段1：画轮廓 */
+  function drawHeart() {
+    const outline = heartPath(0.035);
+    let i = 0;
+    (function step() {
+      if (i >= outline.length) { fillHeart(); return; }
+      const p = outline[i];
+      const k = fitScale();
+      const px = cx() + p.x * k * 10 * XS;
+      const py = cy() + (p.y - Y_CENTER) * k * 10;
+      pen.style.left = px + "px";
+      pen.style.top = py + "px";
+      pen.style.transform = `translate(-50%,-90%) rotate(${Math.atan2(p.y,p.x)*180/Math.PI + 90}deg)`;
+      if (i % 2 === 0) {
+        makeWord(winterWords[Math.floor(Math.random()*winterWords.length)], px, py, 12 + Math.random()*5);
+      }
+      i++;
+setTimeout(step, 14);
+    })();
+  }
+
+  /* 阶段2：内部填充 */
+  function fillHeart() {
+    pen.style.display = "none";
+    const fill = heartFill(60);
+    let i = 0;
+    (function step() {
+      if (i >= fill.length) {
+        heartDrawn = true;
+        triggerExplode(); // 画好时若已到点，立即炸
+        return;
+      }
+      const p = fill[i];
+      makeWord(
+        winterWords[Math.floor(Math.random()*winterWords.length)],
+        cx() + p.x * fitScale() * 10 * XS,
+        cy() + (p.y - Y_CENTER) * fitScale() * 10,
+        11 + Math.random()*5
+      );
+      i++;
+      setTimeout(step, 10);
+    })();
+  }
+
+  /* 阶段3：炸开 + 持续漂浮 */
+  function explode() {
+    const words = stage.querySelectorAll(".word");
+    words.forEach((word) => {
+      const rect = word.getBoundingClientRect();
+      const ox = rect.left + rect.width/2 - cx();
+      const oy = rect.top + rect.height/2 - cy();
+      const vx = ox * 0.02 + (Math.random()-0.5)*1.6;
+      const vy = -(0.2 + Math.random()*0.5);
+      word.animate([
+        { transform: "translate(-50%,-50%) scale(1)", opacity: 1 },
+{ transform: `translate(${ox*1.6}px,${oy*1.6 - 80}px) scale(${0.7+Math.random()})`, opacity: 1 }
+      ], { duration: 1600, easing: "cubic-bezier(.15,.6,.3,1)" });
+      setTimeout(() => {
+        floaters.push({
+          el: word, x: rect.left, y: rect.top, vx, vy,
+          phase: Math.random()*Math.PI*2
+        });
+      }, 1600);
+    });
+    setTimeout(showFullScreen, 2200);
+  }
+
+  /* 阶段4：满屏文字持续上浮 */
+  function showFullScreen() {
+    for (let i = 0; i < 110; i++) {
+      const el = document.createElement("div");
+      el.className = "word";
+      el.innerText = winterWords[Math.floor(Math.random()*winterWords.length)];
+      el.style.color = palette[Math.floor(Math.random()*palette.length)];
+      el.style.fontSize = (12 + Math.random()*9) + "px";
+      const x = Math.random()*W, y = Math.random()*H;
+      el.style.left = x + "px"; el.style.top = y + "px";
+      el.style.opacity = "0";
+      stage.appendChild(el);
+      setTimeout(() => { el.style.transition = "opacity 1.5s"; el.style.opacity = 0.7 + Math.random()*0.3; }, 100 + Math.random()*900);
+floaters.push({ el, x, y, vx:(Math.random()-0.5)*0.3, vy:-(0.2+Math.random()*0.5), phase:Math.random()*Math.PI*2 });
+    }
+  }
+
+  /* 漂浮主循环 */
+  function loop() {
+    floaters.forEach(f => {
+      f.phase += 0.02;
+      f.x += f.vx + Math.sin(f.phase)*0.3;
+      f.y += f.vy;
+      if (f.y < -30) { f.y = H + 20; f.x = Math.random()*W; }
+      if (f.x < -40) f.x = W + 20;
+      if (f.x > W + 40) f.x = -20;
+      f.el.style.left = f.x + "px";
+      f.el.style.top = f.y + "px";
+    });
+    requestAnimationFrame(loop);
+  }
+  loop();
+
+  /* 雪花 */
+  const canvas = document.getElementById("snow");
+  const ctx = canvas.getContext("2d");
+  let snowList = [];
+  function resize() { W = innerWidth; H = innerHeight; canvas.width = W; canvas.height = H; }
+  resize();
+  addEventListener("resize", resiz
