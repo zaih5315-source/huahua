@@ -1,119 +1,103 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>冬至祝福</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>华华关心</title>
 <style>
-*{margin:0;padding:0}
-body{
-  width:100vw;
-  height:100vh;
-  overflow:hidden;
-  background:#000;
-}
-.text-item{
-  position:absolute;
-  color:#fff;
-  font-size:18px;
-  white-space:nowrap;
-}
-canvas{
-  position:fixed;
-  top:0;left:0;
-  width:100%;height:100%;
-  pointer-events:none;
-}
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: radial-gradient(circle at center, #13294b 0%, #060d1f 75%);
+    color: #fff;
+  }
+
+  /* 弹窗 */
+  .modal {
+    position: fixed; inset: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,.35);
+  }
+  .modal-box {
+    background: rgba(20,36,66,.92); border: 1px solid rgba(255,255,255,.15);
+    border-radius: 20px; padding: 34px 26px; text-align: center;
+    width: 82%; max-width: 340px; backdrop-filter: blur(8px);
+    box-shadow: 0 12px 40px rgba(0,0,0,.4);
+  }
+  .modal-box .icon { font-size: 46px; margin-bottom: 14px; }
+.modal-box h2 { font-size: 18px; margin-bottom: 8px; }
+  .modal-box p { font-size: 13px; color: rgba(255,255,255,.55); margin-bottom: 24px; }
+  .modal-btns { display: flex; gap: 12px; }
+  .modal-btns button {
+    flex: 1; height: 44px; border-radius: 22px; border: none;
+    font-size: 15px; font-weight: 600; cursor: pointer;
+  }
+  .cancel { background: rgba(255,255,255,.12); color: #ccc; }
+  .confirm { background: linear-gradient(135deg, #ff6b9d, #ff4d79); color: #fff; }
+
+  #stage { position: fixed; inset: 0; display: none; }
+  .pen {
+    position: absolute; width: 26px; height: 64px; z-index: 6;
+    background: linear-gradient(180deg, #ff6b9d, #ff4d79);
+    border-radius: 6px 6px 2px 2px; transform-origin: 50% 90%;
+  }
+  .pen::after {
+    content: ''; position: absolute; bottom: -10px; left: 50%;
+    transform: translateX(-50%);
+    border-left: 5px solid transparent; border-right: 5px solid transparent;
+    border-top: 10px solid #ff4d79;
+  }
+  .word {
+    position: absolute; white-space: nowrap; pointer-events: none;
+will-change: transform, opacity; text-shadow: 0 0 8px currentColor;
+  }
+  .music-btn {
+    position: fixed; top: 18px; right: 16px; z-index: 30;
+    padding: 8px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,.25);
+    background: rgba(255,255,255,.1); color: #fff; font-size: 13px;
+  }
+  canvas#snow { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
 </style>
 </head>
 <body>
-<canvas id="snow"></canvas>
-<script>
-// 弹窗
-if(!confirm("❄️ 你有一份冬至祝福，是否收下？")){
-  document.body.innerHTML="<div style='color:#fff;text-align:center;margin-top:50%;'>没关系，祝你平安顺遂</div>";
-}else{
-  // 冬至祝福语
-  const words = [
-    "冬至大如年，人间小团圆",
-    "吃饺子不冻耳朵🥟",
-    "昼短夜长，愿温暖相伴",
-    "寒来暑往，秋收冬藏",
-    "愿你岁岁平安✨",
-    "往后白昼渐长，好运渐多",
-    "天冷记得添衣",
-    "万事皆顺意",
-    "家人安康",
-    "烦恼清零，喜乐常在",
-    "冬至安康❄️",
-    "平安喜乐，得偿所愿"
-  ];
-  // 飘字
-  function createText(){
-    const div = document.createElement("div");
-    div.className="text-item";
-    div.innerText = words[Math.floor(Math.random()*words.length)];
-    let x = Math.random()*window.innerWidth;
-    let y = window.innerHeight;
-    div.style.left = x + "px";
-    div.style.top = y + "px";
-    document.body.appendChild(div);
-    let speedX = (Math.random()-0.5)*2;
-    let speedY = -Math.random()*2 -1;
-    function move(){
-      x += speedX;
-      y += speedY;
-      div.style.left = x+"px";
-      div.style.top = y+"px";
-      if(y < -50){
-        div.remove();
-        return;
-      }
-      requestAnimationFrame(move);
-    }
-    move();
-  }
-  setInterval(createText,300);
-}
 
-// 雪花
-const canvas = document.getElementById('snow');
-const ctx = canvas.getContext('2d');
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
-let snows = [];
-class Snow{
-  constructor(){
-    this.x = Math.random()*canvas.width;
-    this.y = Math.random()*-canvas.height;
-    this.r = Math.random()*2+1;
-    this.speed = Math.random()+0.4;
-  }
-  draw(){
-    ctx.beginPath();
-    ctx.arc(this.x,this.y,this.r,0,Math.PI*2);
-    ctx.fillStyle="#fff";
-    ctx.fill();
-  }
-  update(){
-    this.y += this.speed;
-    if(this.y>canvas.height){
-      this.y=-10;
-      this.x=Math.random()*canvas.width;
-    }
-  }
-}
-for(let i=0;i<120;i++) snows.push(new Snow());
-function loop(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  snows.forEach(s=>{s.draw();s.update()});
-  requestAnimationFrame(loop);
-}
-loop();
-window.onresize=()=>{
-  canvas.width=innerWidth;
-  canvas.height=innerHeight;
-}
-</script>
-</body>
-</html>
+<div class="modal" id="modal">
+  <div class="modal-box">
+    <div class="icon">❄️</div>
+    <h2>是否收下这份关心？</h2>
+    <p>华华给你准备了一份小惊喜～</p>
+    <div class="modal-btns">
+      <button class="cancel" id="cancelBtn">取消</button>
+      <button class="confirm" id="confirmBtn">确定</button>
+    </div>
+  </div>
+</div>
+
+<div id="stage"><div class="pen" id="pen"></div></div>
+<canvas id="snow"></canvas>
+<button class="music-btn" id="musicBtn">🔊 音乐</button>
+<audio id="bgm" preload="auto" loop></audio>
+
+<script>
+  const winterWords = [
+    "我想你了","我喜欢你","保持微笑呀","每天都要活力满满","保持好心情",
+"我想你了庄欣雨","庄欣雨","我喜欢你","梦想成真","烦恼归零",
+    "少熬夜","少吃零食","愿我们长长久久","愿我们幸福","我喜欢你","早睡早起","我爱你庄欣雨"
+  ];
+  const palette = ["#ff6b9d","#ff4d6d","#ffc371","#ffffff","#a8d8ff","#ff9eb5"];
+
+  /* 卡点时间点（秒）：第 8 秒炸开 */
+  const EXPLODE_AT = 8;
+
+  const modal = document.getElementById("modal");
+  const stage = document.getElementById("stage");
+  const pen = document.getElementById("pen");
+  const bgm = document.getElementById("bgm");
+  const musicBtn = document.getElementById("musicBtn");
+
+  /* 音频源（base64 内嵌，单文件自包含） */
+  bgm.src = "data:audio/mp4;base64,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
